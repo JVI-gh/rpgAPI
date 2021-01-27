@@ -2,9 +2,16 @@ const express = require('express');
 const app = express();
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
 
-const characterRoutes = require('./api/routes/players');
-const index = require('./api/routes/index');
+const indexRoute = require('./api/routes/index');
+const playerRoutes = require('./api/routes/players');
+const characterRoutes = require('./api/routes/characters')
+
+mongoose.connect("mongodb+srv://crow-manager:" + process.env.DBPASS + "@node-rest-rpggame.6micw.mongodb.net/node-rest-rpggame?retryWrites=true&w=majority", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
 
 app.use(morgan('dev'));
 app.use(bodyParser.urlencoded({extended: false}));
@@ -20,7 +27,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use('/', index);
+app.use('/', indexRoute);
+app.use('/players', playerRoutes);
 app.use('/players', characterRoutes);
 
 app.use((req, res, nest) => {
@@ -30,7 +38,7 @@ app.use((req, res, nest) => {
 });
 
 app.use((error, req, res, next) => {
-  res.status(err.status || 500);
+  res.status(error.status || 500);
   res.json({
     error: {
       message: error.message
