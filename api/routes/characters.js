@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 
 const Player = require('../models/player');
 const Character = require('../models/character');
+const Stats = require('../models/stats');
 
 router.get('/:playerID/characters', (req, res, next) => {
   const id = req.params.playerID;
@@ -28,14 +29,31 @@ router.post('/:playerID/characters', (req, res, next) => {
     const newCharacter = new Character({
       _id: new mongoose.Types.ObjectId(),
       playerID: id,
-      characterName: req.body.characterName
+      characterName: req.body.characterName,
+      stats: []
     });
+    const statsList = new Stats({
+      charID: newCharacter._id,
+      strength: 10,
+      dexterity: 10,
+      constitution: 10
+    });
+
+    newCharacter.stats.push(statsList);
+    statsList.save().then(result => {
+      }).catch(err => {
+        console.log(err);
+      });
     console.log(doc);
     doc.characters.push(newCharacter);
+    newCharacter.save().then(result => {
+    }).catch(err => {
+      console.log(err);
+    });
     doc.save().then(result => {
       console.log(result);
       res.status(201).json({
-        message: 'Created user succesfully',
+        message: 'Created character succesfully',
         createdCharacter: {
           characterID: newCharacter._id,
           playerID: newCharacter.playerID,
@@ -54,24 +72,43 @@ router.post('/:playerID/characters', (req, res, next) => {
 router.get('/:playerID/characters/:characterID', (req, res, next) => {
   const playerID = req.params.playerID;
   const characterID = req.params.characterID;
-  Player.findById(playerID).select('characters').exec().then(doc => {
-    console.log(Object.keys(doc._doc.characters));
-    doc._doc.characters.findById(characterID).select('_id playerID characterName').exec().then(result => {
-      console.log("From database", result);
-      if (result) {
-        res.status(200).json({
-          character: result
-        });
-      } else {
-        res.status(404).json({ message: 'No valid id found' });
-      }
-      }).catch(err => {
-      console.log(err);
-      res.status(500).json({ error: err });
-    });
+  Character.find({ "_id": characterID, "playerID": playerID }).select('_id playerID characterName stats').exec().then(doc => {
+    if (doc) {
+      res.status(200).json({
+        character: doc
+      });
+    } else {
+      res.status(404).json({ message: 'No valid id found' });
+    }
   }).catch(err => {
     console.log(err);
     res.status(500).json({ error: err });
+  });
+});
+
+router.patch('/:playerID/characters/:characterID', (req, res, next) => {
+  const playerID = req.params.playerID;
+  const characterID = req.params.characterID;
+  const updateOps = {};
+  for (const ops of req.body) {
+    updateOps[ops.propName] = ops.value;
+  }
+  Player.findById(playerID).updateOne({"characters._id": characterID}, {$set: updateOps}).exec().then(result => {
+    console.log(result);
+  });
+  Character.updateOne({ "_id": characterID}, {$set: updateOps}).exec().then(result => {
+    res.status(200).json({
+      message: 'Updated character',
+      request: {
+        type: 'GET',
+        url: 'https://rpgAPI.callmecrow.repl.co/players' + playerID + '/characters/' + characterID
+      }
+    });
+  }).catch(err => {
+    console.log(err);
+    res.status(500).json({
+      error: err
+    })
   });
 });
 
@@ -79,9 +116,9 @@ router.get('/:playerID/characters/:characterID', (req, res, next) => {
 router.delete('/:playerID/characters/:characterID', (req, res, next) => {
   const playerID = req.params.playerID;
   const characterID = req.params.characterID;
-  Character.remove({ _id: characterID }).exec().then(result => {
+  Character.remove({ "_id": characterID, "playerID": playerID }).exec().then(result => {
     res.status(200).json({
-      message: 'User deleted',
+      message: 'Character deleted',
       request: {
         type: 'POST',
         url: 'https://rpgAPI.callmecrow.repl.co/players/:playerID/characters',

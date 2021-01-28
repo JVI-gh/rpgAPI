@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 
 const Player = require('../models/player');
 const Character = require('../models/character');
+const Stats = require('../models/stats');
 
 router.get('/', (req, res, next) => {
   Player.find().select('_id name password characters').exec().then(docs => {
@@ -33,11 +34,12 @@ router.get('/', (req, res, next) => {
 });
 
 router.post('/', async (req, res, next) => {
-  if(req.body.password != undefined && req.body.name != undefined) {
+  if (req.body.password != undefined && req.body.name != undefined) {
     try {
       bcrypt.genSalt(10, (err, salt) => {
         bcrypt.hash(req.body.password, salt, (err, hash) => {
           if (err) throw (err);
+
           const player = new Player({
             _id: new mongoose.Types.ObjectId(),
             name: req.body.name,
@@ -47,20 +49,33 @@ router.post('/', async (req, res, next) => {
           const newCharacter = new Character({
             _id: new mongoose.Types.ObjectId(),
             playerID: player._id,
-            characterName: req.body.characterName
+            characterName: req.body.characterName,
+            stats: []
+          });
+          console.log(newCharacter._id);
+          const statsList = new Stats({
+            charID: newCharacter._id,
+            strength: 10,
+            dexterity: 10,
+            constitution: 10
           });
 
           player.characters.push(newCharacter);
-          
+          newCharacter.stats.push(statsList);
+
+          newCharacter.save();
+
+          statsList.save();
+
           player.save().then(result => {
             console.log(result);
             res.status(201).json({
-              message: 'Created user succesfully',
+              message: 'Created player succesfully',
               createdPlayer: {
                 id: result._id,
                 name: result.name,
                 password: result.password,
-                characters: result.characters,
+                characters: newCharacter,
                 request: {
                   type: 'GET',
                   url: 'https://rpgAPI.callmecrow.repl.co/players/' + result._id
@@ -69,10 +84,7 @@ router.post('/', async (req, res, next) => {
             });
           }).catch(err => {
             console.log(err);
-            res.status(500).json({
-              error: err
-            });
-          });    
+          });
         });
       });
     } catch (err) {
@@ -82,9 +94,10 @@ router.post('/', async (req, res, next) => {
       });
     }
   } else {
-    res.status(500).json({ message: 'No valid request detected'});
+    res.status(500).json({ message: 'No valid request detected' });
   }
 });
+
 
 router.get("/:playerID", (req, res, next) => {
   const id = req.params.playerID;
@@ -133,9 +146,16 @@ router.delete("/:playerID", (req, res, next) => {
       request: {
         type: 'POST',
         url: 'https://rpgAPI.callmecrow.repl.co/players',
-        body: { name: 'String', password: 'String', characterName: 'String'}
+        body: { name: 'String', password: 'String', characterName: 'String' }
       }
     });
+  }).catch(err => {
+    console.log(err);
+    res.status(500).json({
+      error: err
+    });
+  });
+  Character.remove({ playerID: id }).exec().then(result => {
   }).catch(err => {
     console.log(err);
     res.status(500).json({

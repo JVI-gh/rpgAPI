@@ -1,10 +1,19 @@
 const mongoose = require('mongoose');
-const Template = mongoose.Schema
+const Schema = mongoose.Schema;
+const Stats = require('./stats.js');
 
-const characterTemplate = new Template({
-  _characterID: mongoose.Schema.Types.ObjectId,
-  playerID: { type: mongoose.Schema.Types.ObjectId, ref:'Player', required: true},
-  characterName: { type: String, required: true},
+const statsList = new Stats({
+  charID: { type: mongoose.Schema.Types.ObjectId, ref:'Character'},
+  strength: {type: Number, default: 10},
+  dexterity: {type: Number, default: 10},
+  constitution: {type: Number, default: 10}
 });
 
-module.exports = mongoose.model('Character', characterTemplate);
+const characterSchema = new Schema({
+  _id: mongoose.Schema.Types.ObjectId,
+  playerID: { type: mongoose.Schema.Types.ObjectId, ref:'Player', required: true},
+  characterName: { type: String, required: true},
+  stats:{type:[Stats.schema], default: statsList} 
+});
+
+module.exports = mongoose.model('Character', characterSchema);
