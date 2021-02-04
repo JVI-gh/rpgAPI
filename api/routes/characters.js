@@ -28,6 +28,7 @@ router.post('/:playerID/characters', (req, res, next) => {
   Player.findById(id).select('characters').exec().then(doc => {
     const newCharacter = new Character({
       _id: new mongoose.Types.ObjectId(),
+      email: req.body.email,
       playerID: id,
       characterName: req.body.characterName,
       stats: []
@@ -93,10 +94,9 @@ router.patch('/:playerID/characters/:characterID', (req, res, next) => {
   for (const ops of req.body) {
     updateOps[ops.propName] = ops.value;
   }
-  Player.findById(playerID).updateOne({"characters._id": characterID}, {$set: updateOps}).exec().then(result => {
-    console.log(result);
-  });
   Character.updateOne({ "_id": characterID}, {$set: updateOps}).exec().then(result => {
+    Player.updateOne({"_id": playerID, characters: { $elemMatch: { "_id": characterID }}}, {$set:{ characters: {updateOps}}}).exec().then(playermod => {
+    });
     res.status(200).json({
       message: 'Updated character',
       request: {
@@ -112,11 +112,38 @@ router.patch('/:playerID/characters/:characterID', (req, res, next) => {
   });
 });
 
+router.patch('/:playerID/chracters/:characterID/stats', (req, res, next) =>{
+  const playerID = req.params.playerID;
+  const characterID = req.params.characterID;
+  const updateOps = {};
+  for (const ops of req.body) {
+    updateOps[ops.propName] = ops.value;
+  }
+  Stats.updateOne({"charID": characterID}, {$set: updateOps}).exec().then(result => {
+    console.log(result);
+    res.status(200).json({
+      message: 'Updated stats',
+      stats: result
+    })
+  }).catch(err => {
+    console.log(err);
+    res.status(500).json({
+      error: err
+    });
+  });
+});
+
 
 router.delete('/:playerID/characters/:characterID', (req, res, next) => {
   const playerID = req.params.playerID;
   const characterID = req.params.characterID;
-  Character.remove({ "_id": characterID, "playerID": playerID }).exec().then(result => {
+
+  Character.removeOne({ "_id": characterID, "playerID": playerID }).exec().then(result => {
+      Player.findById(playerID).select('characters').exec().then(doc => {
+      doc.characters.pull({"_id": characterID});
+      doc.save();
+    });
+    Stats.find({ "charID": characterID}).remove();
     res.status(200).json({
       message: 'Character deleted',
       request: {

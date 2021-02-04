@@ -1,12 +1,14 @@
 const express = require('express');
 const app = express();
+const session = require('express-session');
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
+const passport = require('passport');
 
 const indexRoute = require('./api/routes/index');
 const playerRoutes = require('./api/routes/players');
-const characterRoutes = require('./api/routes/characters')
+const characterRoutes = require('./api/routes/characters');
 
 mongoose.connect("mongodb+srv://crow-manager:" + process.env.DBPASS + "@node-rest-rpggame.6micw.mongodb.net/node-rest-rpggame?retryWrites=true&w=majority", {
   useNewUrlParser: true,
@@ -32,9 +34,10 @@ app.use('/', indexRoute);
 app.use('/players', playerRoutes);
 app.use('/players', characterRoutes);
 
-app.use((req, res, nest) => {
+
+app.use((err, req, res, next) => {
   const error = new Error('Not found');
-  error.status(404);
+  err.status(404);
   next(error);
 });
 
