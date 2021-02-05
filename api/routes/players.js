@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const checkAuth = require('../middleware/check-auth');
 
 const Player = require('../models/player');
 const Character = require('../models/character');
@@ -30,7 +31,7 @@ router.get('/', (req, res, next) => {
   })
 });
 
-router.get("/:playerID", (req, res, next) => {
+router.get("/:playerID", checkAuth, (req, res, next) => {
   const id = req.params.playerID;
   Player.findById(id).select('_id name password characters').exec().then(doc => {
     console.log("From database", doc);
@@ -47,13 +48,13 @@ router.get("/:playerID", (req, res, next) => {
   });
 });
 
-router.patch("/:playerID", (req, res, next) => {
+router.patch("/:playerID", checkAuth, async (req, res, next) => {
   const id = req.params.playerID;
   const updateOps = {};
   for (const ops of req.body) {
     updateOps[ops.propName] = ops.value;
   }
-  Player.update({ _id: id }, { $set: updateOps }).exec().then(result => {
+  await Player.updateOne({_id: id }, { $set: updateOps }).exec().then(result => {
     res.status(200).json({
       message: 'User updated',
       request: {
@@ -69,15 +70,15 @@ router.patch("/:playerID", (req, res, next) => {
   });
 });
 
-router.delete("/:playerID", (req, res, next) => {
+router.delete("/:playerID", checkAuth,(req, res, next) => {
   const id = req.params.playerID;
-  Player.remove({ _id: id }).exec().then(result => {
+  Player.deleteOne({ _id: id }).exec().then(resultP => {
     res.status(200).json({
       message: 'User deleted',
       request: {
         type: 'POST',
         url: 'https://rpgAPI.callmecrow.repl.co/signup',
-        body: { name: 'String', password: 'String', characterName: 'String' }
+        body: { name: 'String', password: 'String', email: 'String' }
       }
     });
   }).catch(err => {
@@ -86,12 +87,6 @@ router.delete("/:playerID", (req, res, next) => {
       error: err
     });
   });
-  Character.remove({ playerID: id }).exec().then(result => {
-  }).catch(err => {
-    console.log(err);
-    res.status(500).json({
-      error: err
-    });
-  });
-});
+}); 
+  
 module.exports = router;
