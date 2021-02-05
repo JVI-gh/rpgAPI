@@ -4,7 +4,6 @@ const session = require('express-session');
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-const passport = require('passport');
 
 const indexRoute = require('./api/routes/index');
 const playerRoutes = require('./api/routes/players');
